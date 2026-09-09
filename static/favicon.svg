@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="16" fill="#059669"/>
+  <!-- Recycling arrows symbol -->
+  <g fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 14 l6 8 h-12 z" fill="#ffffff" stroke="none" />
+    <path d="M26 22 h12 l4 7 -14 24 -14 -24 z" fill="none" />
+    <path d="M32 18 v14" />
+    <path d="M22 36 l10 6 l10 -6" />
+    <!-- Waste Bin outline -->
+    <path d="M20 24 h24 l-3 24 h-18 z" fill="#10B981" opacity="0.4" stroke="#ffffff" stroke-width="3"/>
+    <path d="M16 20 h32" stroke="#ffffff" stroke-width="3"/>
+    <path d="M26 16 h12" stroke="#ffffff" stroke-width="3"/>
+  </g>
+</svg>
