@@ -66,7 +66,7 @@ def create_app():
             file.save(saved_path)
 
             # Perform classification via ML engine
-            pred_result = classifier.predict(saved_path)
+            pred_result = classifier.predict(saved_path, original_filename=original_filename)
             category = str(pred_result['category'])
             confidence = float(pred_result['confidence'])
             processing_time_ms = float(pred_result['processing_time_ms'])

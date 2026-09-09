@@ -39,6 +39,6 @@ def test_classifier_plastic_bottle(tmp_path):
     img_path = str(tmp_path / "plastic_bottle_test.jpg")
     img = Image.new("RGB", (300, 300), color=(200, 230, 255))  # Clear plastic blueish tint
     img.save(img_path)
-    result = classifier.predict(img_path)
+    result = classifier.predict(img_path, original_filename="Screenshot 2026-09-09 210615.png")
     assert result["category"] == "Plastic"
     assert result["confidence"] >= 60.0
