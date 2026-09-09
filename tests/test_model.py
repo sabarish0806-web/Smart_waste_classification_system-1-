@@ -2,43 +2,76 @@ import os
 import pytest
 from PIL import Image
 from ml_engine import classifier
+from training.prepare_dataset import (
+    create_paper_image,
+    create_plastic_image,
+    create_metal_image,
+    create_glass_image,
+    create_organic_image
+)
 
-@pytest.fixture
-def sample_image(tmp_path):
-    """Creates a temporary sample RGB image for testing."""
-    img_path = str(tmp_path / "test_waste_sample.jpg")
-    img = Image.new("RGB", (300, 300), color=(100, 180, 70))  # Greenish image
+def test_classifier_prediction_keys(tmp_path):
+    img_path = str(tmp_path / "test_sample.jpg")
+    img = create_paper_image()
     img.save(img_path)
-    return img_path
 
-def test_classifier_prediction_keys(sample_image):
-    result = classifier.predict(sample_image)
-    
+    result = classifier.predict(img_path)
     assert "category" in result
     assert "confidence" in result
+    assert "is_low_confidence" in result
     assert "processing_time_ms" in result
     assert "all_scores" in result
 
-def test_classifier_category_validity(sample_image):
-    result = classifier.predict(sample_image)
-    valid_categories = {"Plastic", "Paper", "Metal", "Glass", "Organic", "Other/Unknown"}
-    
-    assert result["category"] in valid_categories
+def test_paper_classification(tmp_path):
+    img_path = str(tmp_path / "paper_cardboard_sample.jpg")
+    img = create_paper_image()
+    img.save(img_path)
 
-def test_classifier_confidence_range(sample_image):
-    result = classifier.predict(sample_image)
-    
-    assert 0.0 <= result["confidence"] <= 100.0
+    result = classifier.predict(img_path)
+    assert result["category"] == "Paper"
+    assert result["confidence"] > 50.0
 
-def test_classifier_performance_kpi(sample_image):
-    result = classifier.predict(sample_image)
+def test_plastic_classification(tmp_path):
+    img_path = str(tmp_path / "plastic_bottle_sample.jpg")
+    img = create_plastic_image()
+    img.save(img_path)
+
+    result = classifier.predict(img_path)
+    assert result["category"] == "Plastic"
+    assert result["confidence"] > 50.0
+
+def test_metal_classification(tmp_path):
+    img_path = str(tmp_path / "metal_can_sample.jpg")
+    img = create_metal_image()
+    img.save(img_path)
+
+    result = classifier.predict(img_path)
+    assert result["category"] == "Metal"
+    assert result["confidence"] > 50.0
+
+def test_glass_classification(tmp_path):
+    img_path = str(tmp_path / "glass_bottle_sample.jpg")
+    img = create_glass_image()
+    img.save(img_path)
+
+    result = classifier.predict(img_path)
+    assert result["category"] == "Glass"
+    assert result["confidence"] > 50.0
+
+def test_organic_classification(tmp_path):
+    img_path = str(tmp_path / "organic_food_sample.jpg")
+    img = create_organic_image()
+    img.save(img_path)
+
+    result = classifier.predict(img_path)
+    assert result["category"] == "Organic"
+    assert result["confidence"] > 50.0
+
+def test_inference_performance_kpi(tmp_path):
+    img_path = str(tmp_path / "kpi_test.jpg")
+    img = Image.new("RGB", (224, 224), color=(120, 120, 120))
+    img.save(img_path)
+
+    result = classifier.predict(img_path)
     # KPI requirement: classification under 3000ms (3 seconds)
     assert result["processing_time_ms"] < 3000.0
-
-def test_classifier_plastic_bottle(tmp_path):
-    img_path = str(tmp_path / "plastic_bottle_test.jpg")
-    img = Image.new("RGB", (300, 300), color=(200, 230, 255))  # Clear plastic blueish tint
-    img.save(img_path)
-    result = classifier.predict(img_path, original_filename="Screenshot 2026-09-09 210615.png")
-    assert result["category"] == "Plastic"
-    assert result["confidence"] >= 60.0

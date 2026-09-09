@@ -1,0 +1,83 @@
+{
+  "model_architecture": "MobileNetV3-Small",
+  "num_classes": 5,
+  "class_names": [
+    "Glass",
+    "Metal",
+    "Organic",
+    "Paper",
+    "Plastic"
+  ],
+  "test_accuracy": 100.0,
+  "per_class_metrics": {
+    "Glass": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1_score": 100.0,
+      "support": 30
+    },
+    "Metal": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1_score": 100.0,
+      "support": 30
+    },
+    "Organic": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1_score": 100.0,
+      "support": 30
+    },
+    "Paper": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1_score": 100.0,
+      "support": 30
+    },
+    "Plastic": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1_score": 100.0,
+      "support": 30
+    }
+  },
+  "confusion_matrix": [
+    [
+      30,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      30,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      30,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      30,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      30
+    ]
+  ],
+  "training_duration_sec": 162.75,
+  "trained_at": "2026-09-09 22:23:59"
+}
