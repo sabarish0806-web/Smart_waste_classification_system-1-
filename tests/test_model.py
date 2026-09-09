@@ -34,3 +34,11 @@ def test_classifier_performance_kpi(sample_image):
     result = classifier.predict(sample_image)
     # KPI requirement: classification under 3000ms (3 seconds)
     assert result["processing_time_ms"] < 3000.0
+
+def test_classifier_plastic_bottle(tmp_path):
+    img_path = str(tmp_path / "plastic_bottle_test.jpg")
+    img = Image.new("RGB", (300, 300), color=(200, 230, 255))  # Clear plastic blueish tint
+    img.save(img_path)
+    result = classifier.predict(img_path)
+    assert result["category"] == "Plastic"
+    assert result["confidence"] >= 60.0
