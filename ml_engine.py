@@ -8,68 +8,110 @@ class WasteClassifier:
         self.categories = ["Plastic", "Paper", "Metal", "Glass", "Organic", "Other/Unknown"]
         self._device = None
         self._transform = None
+        self._has_torch = False
         self._cv2 = None
+        self._init_done = False
 
     def _lazy_init(self):
-        """Lazy load heavy ML frameworks (PyTorch, OpenCV) on demand for instant server startup."""
-        if self._transform is None:
-            import torch
-            import torchvision.transforms as transforms
+        """Lazy load heavy ML frameworks (PyTorch, OpenCV) with fail-safe PIL/NumPy fallback for cloud hosting (Render)."""
+        if self._init_done:
+            return
+
+        self._init_done = True
+        
+        # Try importing OpenCV safely
+        try:
             import cv2
             self._cv2 = cv2
+        except Exception:
+            self._cv2 = None
+
+        # Try importing PyTorch safely
+        try:
+            import torch
+            import torchvision.transforms as transforms
             self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             self._transform = transforms.Compose([
                 transforms.Resize((224, 224)),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
+            self._has_torch = True
+        except Exception:
+            # Render / Light environment fallback when torch is not installed
+            self._has_torch = False
 
     def extract_visual_features(self, image_path):
         """Extract color, edge, and texture features to aid waste classification."""
         self._lazy_init()
-        cv2 = self._cv2
+        
         try:
             img_pil = Image.open(image_path).convert('RGB')
-            img_cv = cv2.imread(image_path)
             
-            if img_cv is None:
-                img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+            # If OpenCV is available
+            if self._cv2 is not None:
+                cv2 = self._cv2
+                img_cv = cv2.imread(image_path)
+                if img_cv is None:
+                    img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
-            hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
-            h, s, v = cv2.split(hsv)
-            
-            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-            
-            mean_hue = np.mean(h)
-            mean_sat = np.mean(s)
-            mean_val = np.mean(v)
-            
-            lower_green = np.array([25, 40, 40])
-            upper_green = np.array([85, 255, 255])
-            green_mask = cv2.inRange(hsv, lower_green, upper_green)
-            green_ratio = np.sum(green_mask > 0) / (hsv.shape[0] * hsv.shape[1])
-            
-            lower_brown = np.array([10, 40, 20])
-            upper_brown = np.array([25, 255, 200])
-            brown_mask = cv2.inRange(hsv, lower_brown, upper_brown)
-            brown_ratio = np.sum(brown_mask > 0) / (hsv.shape[0] * hsv.shape[1])
-            
-            specular_mask = (s < 50) & (v > 200)
-            specular_ratio = np.sum(specular_mask) / (hsv.shape[0] * hsv.shape[1])
+                hsv = cv2.cvtColor(img_cv, cv2.COLOR_BGR2HSV)
+                h, s, v = cv2.split(hsv)
+                
+                gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+                laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+                
+                mean_sat = float(np.mean(s))
+                mean_val = float(np.mean(v))
+                
+                lower_green = np.array([25, 40, 40])
+                upper_green = np.array([85, 255, 255])
+                green_mask = cv2.inRange(hsv, lower_green, upper_green)
+                green_ratio = float(np.sum(green_mask > 0) / (hsv.shape[0] * hsv.shape[1]))
+                
+                lower_brown = np.array([10, 40, 20])
+                upper_brown = np.array([25, 255, 200])
+                brown_mask = cv2.inRange(hsv, lower_brown, upper_brown)
+                brown_ratio = float(np.sum(brown_mask > 0) / (hsv.shape[0] * hsv.shape[1]))
+                
+                specular_mask = (s < 50) & (v > 200)
+                specular_ratio = float(np.sum(specular_mask) / (hsv.shape[0] * hsv.shape[1]))
 
-            edges = cv2.Canny(gray, 50, 150)
-            edge_density = np.sum(edges > 0) / (gray.shape[0] * gray.shape[1])
+                edges = cv2.Canny(gray, 50, 150)
+                edge_density = float(np.sum(edges > 0) / (gray.shape[0] * gray.shape[1]))
 
-            return {
-                'green_ratio': float(green_ratio),
-                'brown_ratio': float(brown_ratio),
-                'specular_ratio': float(specular_ratio),
-                'edge_density': float(edge_density),
-                'laplacian_var': float(laplacian_var),
-                'mean_sat': float(mean_sat),
-                'mean_val': float(mean_val)
-            }
+                return {
+                    'green_ratio': green_ratio,
+                    'brown_ratio': brown_ratio,
+                    'specular_ratio': specular_ratio,
+                    'edge_density': edge_density,
+                    'laplacian_var': float(laplacian_var),
+                    'mean_sat': mean_sat,
+                    'mean_val': mean_val
+                }
+            else:
+                # PIL & NumPy fallback feature extraction
+                stat = ImageStat.Stat(img_pil)
+                r, g, b = stat.mean
+                std_r, std_g, std_b = stat.stddev
+                
+                # Green dominance for organic
+                green_ratio = (g / (r + g + b + 1e-5)) if (g > r and g > b) else 0.05
+                brown_ratio = (r / (r + g + b + 1e-5)) if (r > g and r > b and r < 180) else 0.05
+                
+                img_arr = np.array(img_pil)
+                specular_ratio = float(np.sum(img_arr > 230) / img_arr.size)
+                edge_density = float((std_r + std_g + std_b) / 255.0)
+
+                return {
+                    'green_ratio': float(green_ratio),
+                    'brown_ratio': float(brown_ratio),
+                    'specular_ratio': specular_ratio,
+                    'edge_density': edge_density,
+                    'laplacian_var': float((std_r + std_g + std_b) * 2),
+                    'mean_sat': float(abs(r - g) + abs(g - b)),
+                    'mean_val': float((r + g + b) / 3)
+                }
         except Exception:
             return {
                 'green_ratio': 0.1,
@@ -87,7 +129,13 @@ class WasteClassifier:
         self._lazy_init()
         
         img_pil = Image.open(image_path).convert('RGB')
-        tensor_img = self._transform(img_pil).unsqueeze(0).to(self._device)
+        
+        # Perform PyTorch tensor transforms if available
+        if self._has_torch and self._transform:
+            try:
+                tensor_img = self._transform(img_pil).unsqueeze(0).to(self._device)
+            except Exception:
+                pass
         
         features = self.extract_visual_features(image_path)
         
